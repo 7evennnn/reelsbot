@@ -31,6 +31,11 @@ from telegram.ext import (
     filters,
 )
 import sys
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+import pytz
+from core.digest import send_weekly_digest
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from core.ingest import download_reel, cleanup_video, is_supported_url, get_duration
@@ -48,7 +53,8 @@ logger = logging.getLogger(__name__)
 
 gemini_client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 REFLECT_MODEL = "gemini-2.5-flash-lite"
-
+OWNER_USER_ID   = int(os.environ.get("OWNER_USER_ID", 0))
+DIGEST_TIMEZONE = os.environ.get("DIGEST_TIMEZONE", "Asia/Kuala_Lumpur")
 # ── Guardrails ────────────────────────────────────────────────────────────────
 # Message @userinfobot on Telegram to get your ID.
 # Empty = open to anyone. Add your ID to lock it down.
@@ -491,6 +497,23 @@ def main():
     app.add_handler(CommandHandler("collections", cmd_collections))
     app.add_handler(CommandHandler("ask", cmd_ask))
     app.add_handler(CommandHandler("delete", cmd_delete))
+
+    # Weekly digest scheduler
+    if OWNER_USER_ID:
+        tz = pytz.timezone(DIGEST_TIMEZONE)
+        scheduler = AsyncIOScheduler(timezone=tz)
+
+        async def weekly_digest_job():
+            await send_weekly_digest(OWNER_USER_ID, gemini_client, REFLECT_MODEL, app.bot)
+
+        scheduler.add_job(
+            weekly_digest_job,
+            CronTrigger(day_of_week="sun", hour=20, minute=0, timezone=tz),
+        )
+        scheduler.start()
+        print(f"📅 Weekly digest scheduled — Sundays 8pm {DIGEST_TIMEZONE}")
+    else:
+        print("⚠️  OWNER_USER_ID not set — weekly digest disabled")
 
     print("🤖 ReelsBot is running...")
     app.run_polling()

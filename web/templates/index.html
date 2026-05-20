@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>ReelsBot</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0f0f0f;
+      --surface:   #141414;
+      --card:      #181818;
+      --border:    #252525;
+      --accent:    #FFD700;
+      --accent-dim:#a08b00;
+      --text:      #e8e8e8;
+      --sub:       #555;
+      --sub2:      #333;
+      --sidebar-w: 210px;
+      --nav-h:     52px;
+      --radius:    10px;
+      --mono:      'IBM Plex Mono', monospace;
+      --sans:      'Sora', sans-serif;
+    }
+
+    /* Topic palette — 10 hues, each as [tag-color, tag-bg, card-left-tint] */
+    /* Applied via data-hue attribute on cards */
+    [data-hue="0"] { --hue-tag: #ff7b54; --hue-bg: rgba(255,123,84,0.08); --hue-border: rgba(255,123,84,0.35); }
+    [data-hue="1"] { --hue-tag: #4db8ff; --hue-bg: rgba(77,184,255,0.08); --hue-border: rgba(77,184,255,0.35); }
+    [data-hue="2"] { --hue-tag: #7bed9f; --hue-bg: rgba(123,237,159,0.08); --hue-border: rgba(123,237,159,0.35); }
+    [data-hue="3"] { --hue-tag: #c56cf0; --hue-bg: rgba(197,108,240,0.08); --hue-border: rgba(197,108,240,0.35); }
+    [data-hue="4"] { --hue-tag: #ff6b9d; --hue-bg: rgba(255,107,157,0.08); --hue-border: rgba(255,107,157,0.35); }
+    [data-hue="5"] { --hue-tag: #ffd32a; --hue-bg: rgba(255,211,42,0.08);  --hue-border: rgba(255,211,42,0.35);  }
+    [data-hue="6"] { --hue-tag: #00d2d3; --hue-bg: rgba(0,210,211,0.08);   --hue-border: rgba(0,210,211,0.35);   }
+    [data-hue="7"] { --hue-tag: #ff9f43; --hue-bg: rgba(255,159,67,0.08);  --hue-border: rgba(255,159,67,0.35);  }
+    [data-hue="8"] { --hue-tag: #a29bfe; --hue-bg: rgba(162,155,254,0.08); --hue-border: rgba(162,155,254,0.35); }
+    [data-hue="9"] { --hue-tag: #55efc4; --hue-bg: rgba(85,239,196,0.08);  --hue-border: rgba(85,239,196,0.35);  }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Navbar ────────────────────────────────────────────── */
+    .nav {
+      position: fixed; top: 0; left: 0; right: 0;
+      height: var(--nav-h);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 18px; gap: 12px;
+      z-index: 100;
+    }
+    .nav-logo { font-size: 15px; font-weight: 600; color: var(--accent); letter-spacing: -0.3px; flex-shrink: 0; }
+    .nav-count { font-family: var(--mono); font-size: 11px; color: var(--sub); flex-shrink: 0; }
+    .nav-search {
+      flex: 1; background: var(--card);
+      border: 1px solid var(--border); border-radius: 6px;
+      padding: 7px 12px; color: var(--text);
+      font-family: var(--sans); font-size: 13px;
+      outline: none; transition: border-color 0.15s; min-width: 0;
+    }
+    .nav-search::placeholder { color: var(--sub2); }
+    .nav-search:focus { border-color: var(--accent-dim); }
+    .nav-btn {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); font-family: var(--sans);
+      font-size: 12px; padding: 7px 13px; cursor: pointer;
+      white-space: nowrap; transition: border-color 0.15s, color 0.15s; flex-shrink: 0;
+    }
+    .nav-btn:hover { border-color: var(--accent-dim); color: var(--accent); }
+
+    /* ── Layout ─────────────────────────────────────────────── */
+    .layout { display: flex; padding-top: var(--nav-h); min-height: 100vh; }
+
+    /* ── Sidebar ─────────────────────────────────────────────── */
+    .sidebar {
+      width: var(--sidebar-w); flex-shrink: 0;
+      background: var(--surface); border-right: 1px solid var(--border);
+      position: fixed; top: var(--nav-h); bottom: 0; left: 0;
+      overflow-y: auto; padding: 14px 0;
+    }
+    .sidebar::-webkit-scrollbar { width: 3px; }
+    .sidebar::-webkit-scrollbar-thumb { background: var(--border); }
+    .sidebar-label {
+      font-size: 10px; font-weight: 500; color: var(--sub2);
+      text-transform: uppercase; letter-spacing: 1px; padding: 0 16px 6px;
+    }
+    .sidebar-item {
+      display: block; width: 100%; padding: 8px 16px;
+      font-size: 12.5px; color: var(--sub);
+      background: none; border: none; text-align: left; cursor: pointer;
+      transition: color 0.12s, background 0.12s;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .sidebar-item:hover { color: var(--text); background: var(--card); }
+    .sidebar-item.active { color: var(--accent); background: rgba(255,215,0,0.06); font-weight: 500; }
+    .sidebar-divider { height: 1px; background: var(--border); margin: 10px 16px; }
+    .sidebar-badge { float: right; font-family: var(--mono); font-size: 10px; color: var(--sub2); }
+
+    /* ── Main ────────────────────────────────────────────────── */
+    .main { margin-left: var(--sidebar-w); flex: 1; padding: 20px; min-width: 0; }
+    .collection-header {
+      font-size: 11px; font-weight: 500; color: var(--sub);
+      text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;
+    }
+    .collection-header span { color: var(--accent); }
+
+    /* ── Grid ────────────────────────────────────────────────── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 12px;
+    }
+
+    /* ── Card ────────────────────────────────────────────────── */
+    .card {
+      background: var(--card);
+      /* Subtle topic-colour background wash */
+      background: linear-gradient(135deg, var(--hue-bg, transparent) 0%, var(--card) 60%);
+      border: 1px solid var(--border);
+      /* Priority left border — overridden per-card via inline style */
+      border-left: 3px solid var(--priority-color, var(--border));
+      border-radius: var(--radius);
+      padding: 14px;
+      cursor: pointer; text-decoration: none;
+      display: flex; flex-direction: column; gap: 10px;
+      transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+      animation: fadeIn 0.2s ease both;
+    }
+    .card:hover {
+      border-color: var(--hue-border, #3a3a3a);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Tags */
+    .card-topics { display: flex; flex-wrap: wrap; gap: 5px; }
+    .tag {
+      font-family: var(--mono); font-size: 10px;
+      color: var(--hue-tag, var(--accent-dim));
+      background: var(--hue-bg, rgba(255,215,0,0.07));
+      border: 1px solid var(--hue-border, rgba(255,215,0,0.15));
+      border-radius: 4px; padding: 2px 7px; white-space: nowrap;
+    }
+
+    /* Summary */
+    .card-summary {
+      font-size: 12.5px; line-height: 1.6; color: var(--text);
+      display: -webkit-box; -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical; overflow: hidden;
+    }
+
+    /* Footer */
+    .card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
+    .card-time { font-family: var(--mono); font-size: 10px; color: var(--sub); }
+    .card-link-icon { color: var(--sub2); font-size: 13px; transition: color 0.12s; }
+    .card:hover .card-link-icon { color: var(--hue-tag, var(--accent)); }
+
+    /* Priority dot on high-priority cards */
+    .priority-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--priority-color, transparent);
+      flex-shrink: 0;
+    }
+
+    /* ── Empty ───────────────────────────────────────────────── */
+    .empty { text-align: center; padding: 60px 20px; color: var(--sub); }
+    .empty-icon { font-size: 32px; margin-bottom: 12px; }
+    .empty-text { font-size: 13px; line-height: 1.6; }
+
+    /* ── Graph overlay ───────────────────────────────────────── */
+    .graph-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.85); z-index: 200; flex-direction: column;
+    }
+    .graph-overlay.open { display: flex; }
+    .graph-toolbar {
+      height: 44px; background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; padding: 0 16px; gap: 12px; flex-shrink: 0;
+    }
+    .graph-title { font-size: 13px; color: var(--sub); flex: 1; }
+    .graph-close {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); font-family: var(--sans);
+      font-size: 12px; padding: 5px 12px; cursor: pointer;
+    }
+    .graph-close:hover { border-color: var(--sub); }
+    .graph-frame { flex: 1; border: none; width: 100%; }
+    .graph-loading {
+      flex: 1; display: flex; align-items: center;
+      justify-content: center; color: var(--sub); font-size: 13px;
+    }
+
+    /* ── Mobile ──────────────────────────────────────────────── */
+    @media (max-width: 600px) {
+      :root { --sidebar-w: 0px; }
+      .sidebar {
+        width: 100%; height: auto; position: static;
+        border-right: none; border-bottom: 1px solid var(--border);
+        padding: 8px 0; display: flex; overflow-x: auto; overflow-y: hidden;
+        flex-direction: row; flex-wrap: nowrap; align-items: center;
+      }
+      .sidebar-label, .sidebar-divider { display: none; }
+      .sidebar-item { display: inline-block; padding: 6px 12px; flex-shrink: 0; }
+      .sidebar-badge { display: none; }
+      .layout { flex-direction: column; }
+      .main { margin-left: 0; padding: 14px; }
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-logo">🧠 ReelsBot</div>
+  <div class="nav-count" id="nav-count"></div>
+  <input class="nav-search" type="text" placeholder="Search memories..." id="search-input">
+  <button class="nav-btn" id="graph-btn">Graph ↗</button>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-label">Collections</div>
+    <button class="sidebar-item active" id="all-btn" data-col="all">
+      All Memories
+      <span class="sidebar-badge" id="all-badge"></span>
+    </button>
+    <div class="sidebar-divider"></div>
+    <div id="collection-list"></div>
+  </aside>
+
+  <main class="main">
+    <div class="collection-header" id="collection-header">All Memories</div>
+    <div class="grid" id="grid"></div>
+  </main>
+</div>
+
+<div class="graph-overlay" id="graph-overlay">
+  <div class="graph-toolbar">
+    <div class="graph-title">Memory Graph</div>
+    <button class="graph-close" id="graph-close">✕ Close</button>
+  </div>
+  <div class="graph-loading" id="graph-loading">Loading graph...</div>
+  <iframe class="graph-frame" id="graph-frame" style="display:none"></iframe>
+</div>
+
+<script>
+  let allMemories = [];
+  let activeCol = "all";
+  let searchQuery = "";
+
+  // ── Colour helpers ──────────────────────────────────────────────────────────
+  // Deterministic hue 0-9 from a string (used for topic colouring)
+  function strHue(str) {
+    if (!str) return 0;
+    let h = 0;
+    for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) & 0xffff;
+    return h % 10;
+  }
+
+  // Priority → CSS colour
+  const PRIORITY_COLORS = {
+    high:   "#FFD700",
+    medium: "#333",
+    low:    "transparent",
+  };
+
+  // ── Data ────────────────────────────────────────────────────────────────────
+  async function loadAll() {
+    const [mems, cols] = await Promise.all([
+      fetch("/api/memories").then(r => r.json()).catch(() => []),
+      fetch("/api/collections").then(r => r.json()).catch(() => []),
+    ]);
+    allMemories = mems;
+    document.getElementById("nav-count").textContent =
+      `${mems.length} memor${mems.length === 1 ? "y" : "ies"}`;
+    document.getElementById("all-badge").textContent = mems.length;
+    buildSidebar(cols);
+    render();
+  }
+
+  // ── Sidebar ─────────────────────────────────────────────────────────────────
+  function buildSidebar(collections) {
+    const list = document.getElementById("collection-list");
+    list.innerHTML = "";
+    collections.forEach(col => {
+      const count = allMemories.filter(m =>
+        (m.collections || []).some(c => normalise(c) === col)
+      ).length;
+      if (count === 0) return;
+      const btn = document.createElement("button");
+      btn.className = "sidebar-item";
+      btn.dataset.col = col;
+      btn.innerHTML = `${col.replace(/_/g, " ")} <span class="sidebar-badge">${count}</span>`;
+      btn.addEventListener("click", () => selectCol(col));
+      list.appendChild(btn);
+    });
+  }
+
+  // Fix: attach listener to "All Memories" button
+  document.getElementById("all-btn").addEventListener("click", () => selectCol("all"));
+
+  function selectCol(col) {
+    activeCol = col;
+    document.querySelectorAll(".sidebar-item").forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.col === col);
+    });
+    const header = document.getElementById("collection-header");
+    header.innerHTML = col === "all"
+      ? "All Memories"
+      : `<span>${col.replace(/_/g, " ")}</span>`;
+    render();
+  }
+
+  function normalise(name) {
+    return String(name).toLowerCase()
+      .replace(/[^a-z0-9._-]/g, "_")
+      .replace(/_+/g, "_")
+      .replace(/^[_.-]+|[_.-]+$/g, "");
+  }
+
+  // ── Search ──────────────────────────────────────────────────────────────────
+  document.getElementById("search-input").addEventListener("input", e => {
+    searchQuery = e.target.value.toLowerCase().trim();
+    render();
+  });
+
+  // ── Render ──────────────────────────────────────────────────────────────────
+  function render() {
+    let mems = allMemories;
+
+    if (activeCol !== "all") {
+      mems = mems.filter(m =>
+        (m.collections || []).some(c => normalise(c) === activeCol)
+      );
+    }
+
+    if (searchQuery) {
+      mems = mems.filter(m => {
+        const hay = [m.summary, ...(m.topics || []), m.user_note].join(" ").toLowerCase();
+        return hay.includes(searchQuery);
+      });
+    }
+
+    const grid = document.getElementById("grid");
+
+    if (mems.length === 0) {
+      grid.innerHTML = `
+        <div class="empty" style="grid-column:1/-1">
+          <div class="empty-icon">🎞️</div>
+          <div class="empty-text">
+            ${searchQuery ? "No memories match your search." : "Nothing saved here yet."}
+          </div>
+        </div>`;
+      return;
+    }
+
+    grid.innerHTML = mems.map((m, i) => {
+      // Colour from first collection, fallback to first topic
+      const colorSeed = (m.collections && m.collections[0]) || (m.topics && m.topics[0]) || "";
+      const hue = strHue(colorSeed);
+      const priorityColor = PRIORITY_COLORS[m.priority] || "transparent";
+
+      const topics = (m.topics || []).slice(0, 4)
+        .map(t => `<span class="tag">${esc(t)}</span>`).join("");
+
+      const summary = esc(m.summary || "");
+      const time = formatTime(m.created_at);
+
+      // Use the actual source_url — fall back to "#" only if truly missing
+      const url = (m.source_url && m.source_url.startsWith("http")) ? esc(m.source_url) : "#";
+
+      return `
+        <a class="card" href="${url}" target="_blank" rel="noopener"
+           data-hue="${hue}"
+           style="--priority-color: ${priorityColor}; animation-delay:${Math.min(i * 20, 200)}ms">
+          ${topics ? `<div class="card-topics">${topics}</div>` : ""}
+          <div class="card-summary">${summary}</div>
+          <div class="card-footer">
+            <div class="card-time">${time}</div>
+            ${m.priority === "high" ? `<div class="priority-dot" title="High priority"></div>` : ""}
+            <div class="card-link-icon">↗</div>
+          </div>
+        </a>`;
+    }).join("");
+  }
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+  function esc(str) {
+    return String(str || "")
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  function formatTime(iso) {
+    if (!iso) return "";
+    try {
+      const d = new Date(iso);
+      const days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      let h = d.getHours(), m = d.getMinutes();
+      const ampm = h >= 12 ? "pm" : "am";
+      h = h % 12 || 12;
+      return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}, ${h}:${String(m).padStart(2,"0")} ${ampm}`;
+    } catch { return ""; }
+  }
+
+  // ── Graph overlay ────────────────────────────────────────────────────────────
+  const graphOverlay = document.getElementById("graph-overlay");
+  const graphFrame   = document.getElementById("graph-frame");
+  const graphLoading = document.getElementById("graph-loading");
+
+  document.getElementById("graph-btn").addEventListener("click", () => {
+    graphOverlay.classList.add("open");
+    if (!graphFrame.src) {
+      graphFrame.style.display = "none";
+      graphLoading.style.display = "flex";
+      graphFrame.src = "/api/graph";
+      graphFrame.onload = () => {
+        graphLoading.style.display = "none";
+        graphFrame.style.display = "block";
+      };
+      graphFrame.onerror = () => {
+        graphLoading.textContent = "Graph not available yet. Save at least 2 Reels first.";
+      };
+    }
+  });
+
+  document.getElementById("graph-close").addEventListener("click", () => {
+    graphOverlay.classList.remove("open");
+  });
+
+  graphOverlay.addEventListener("click", e => {
+    if (e.target === graphOverlay) graphOverlay.classList.remove("open");
+  });
+
+  // ── Init ─────────────────────────────────────────────────────────────────────
+  loadAll();
+</script>
+</body>
+</html>
