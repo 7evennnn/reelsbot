@@ -31,20 +31,18 @@ from telegram.ext import (
     filters,
 )
 import sys
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+from core.digest import send_weekly_digest
+from apscheduler.schedulers.background import BackgroundScheduler as AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 import pytz
-from core.digest import send_weekly_digest
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from core.ingest import download_reel, cleanup_video, is_supported_url, get_duration
 from core.analyze import analyze_reel
-from core.memory import save_memory, search, get_todos, list_collections, get_recent_memories
-from core.graph import add_and_link, get_related
-from core.visualize import generate_graph
 from core.memory import save_memory, search, get_todos, list_collections, get_recent_memories, delete_memory
 from core.graph import add_and_link, get_related, remove_node
+from core.visualize import generate_graph
+from core.auth import generate_login_token
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -480,6 +478,25 @@ async def cmd_delete(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"🗑️ Deleted `{short_id}`.", parse_mode="Markdown")
 
 
+async def cmd_login(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if not is_allowed(user_id):
+        return
+
+    token = generate_login_token(user_id)
+    
+    # We can fetch a base URL from environment or fallback to localhost
+    base_url = os.environ.get("BASE_URL", "http://localhost:5000")
+    login_url = f"{base_url}/login?token={token}"
+    
+    await update.message.reply_html(
+        f"🔑 <b>ReelsBot Web Login</b>\n\n"
+        f"Click the link below to securely log into your memories dashboard. "
+        f"This link is valid for <b>15 minutes</b> and can only be used once:\n\n"
+        f"🔗 <a href=\"{login_url}\">Log In to ReelsBot</a>",
+        disable_web_page_preview=True
+    )
+
 
 def main():
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
@@ -497,6 +514,7 @@ def main():
     app.add_handler(CommandHandler("collections", cmd_collections))
     app.add_handler(CommandHandler("ask", cmd_ask))
     app.add_handler(CommandHandler("delete", cmd_delete))
+    app.add_handler(CommandHandler("login", cmd_login))
 
     # Weekly digest scheduler
     if OWNER_USER_ID:
@@ -511,7 +529,7 @@ def main():
             CronTrigger(day_of_week="sun", hour=20, minute=0, timezone=tz),
         )
         scheduler.start()
-        print(f"📅 Weekly digest scheduled — Sundays 8pm {DIGEST_TIMEZONE}")
+        print(f"[Weekly] Weekly digest scheduled — Sundays 8pm {DIGEST_TIMEZONE}")
     else:
         print("⚠️  OWNER_USER_ID not set — weekly digest disabled")
 

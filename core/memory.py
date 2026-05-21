@@ -67,13 +67,16 @@ def save_memory(analysis: dict, source_url: str, user_id: int, user_note: str = 
 
     for col_name in analysis.get("suggested_collections", []):
         safe_name = col_name.lower()
-    safe_name = re.sub(r'[^a-z0-9._-]', '_', safe_name)  # strip anything invalid
-    safe_name = re.sub(r'_+', '_', safe_name)             # collapse runs of underscores
-    safe_name = safe_name.strip('_.-')                    # must start/end with alphanumeric
-    if len(safe_name) < 3:
-        safe_name = f"col_{safe_name}"                    # ChromaDB minimum is 3 chars
-        col = _get_or_create_collection(safe_name, user_id)
-        col.add(ids=[memory_id], documents=[embed_text], metadatas=[metadata])
+        safe_name = re.sub(r'[^a-z0-9._-]', '_', safe_name)  # strip anything invalid
+        safe_name = re.sub(r'_+', '_', safe_name)             # collapse runs of underscores
+        safe_name = safe_name.strip('_.-')                    # must start/end with alphanumeric
+        if len(safe_name) < 3:
+            safe_name = f"col_{safe_name}"                    # ChromaDB minimum is 3 chars
+        try:
+            col = _get_or_create_collection(safe_name, user_id)
+            col.add(ids=[memory_id], documents=[embed_text], metadatas=[metadata])
+        except Exception as e:
+            print(f"[memory] Error saving to sub-collection {safe_name}: {e}")
 
     print(f"[memory] user={user_id} saved {memory_id} → {analysis.get('suggested_collections', [])}")
     return memory_id

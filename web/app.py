@@ -9,8 +9,9 @@ import os
 import sys
 import json
 import re
+from datetime import timedelta
 
-from flask import Flask, render_template, jsonify, send_file
+from flask import Flask, render_template, jsonify, send_file, session, redirect, url_for, request
 from dotenv import load_dotenv
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -20,7 +21,10 @@ from core.memory import get_recent_memories, list_collections
 
 app = Flask(__name__)
 
-OWNER_USER_ID = int(os.environ.get("OWNER_USER_ID", 0))
+# Cryptographically sign sessions. Fallback to a random key if not configured in .env
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "reelsbot-signed-session-cookie-key-928374")
+app.permanent_session_lifetime = timedelta(days=30)
+
 CHROMA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "chroma")
 GRAPH_DIR  = os.path.join(os.path.dirname(__file__), "..", "data", "graphs")
 
@@ -37,17 +41,53 @@ def _get_chroma_col(name: str):
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    # Render index.html. The frontend will inspect if we are logged in or not
+    user_id = session.get("user_id")
+    return render_template("index.html", authenticated=bool(user_id), user_id=user_id)
+
+
+@app.route("/login")
+def login():
+    token = request.args.get("token")
+    if not token:
+        return render_template("index.html", authenticated=False, error="No login token provided. Please request a new link via /login in your Telegram bot.")
+    
+    from core.auth import verify_login_token
+    user_id = verify_login_token(token)
+    if not user_id:
+        return render_template("index.html", authenticated=False, error="This magic link is invalid or has expired. Please run /login in your Telegram bot to generate a new one.")
+        
+    session["user_id"] = user_id
+    session.permanent = True
+    return redirect(url_for("index"))
+
+
+@app.route("/logout")
+def logout():
+    session.pop("user_id", None)
+    return redirect(url_for("index"))
+
+
+@app.route("/api/user")
+def api_user():
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"authenticated": False})
+    return jsonify({"authenticated": True, "user_id": user_id})
 
 
 @app.route("/api/memories")
 def api_memories():
-    """All memories with source_url, collections, and priority attached."""
-    memories = get_recent_memories(OWNER_USER_ID, limit=500)
+    """All memories for the currently authenticated user."""
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    memories = get_recent_memories(user_id, limit=500)
 
     # Fetch full metadata from ChromaDB to get source_url, collections, priority
     try:
-        col = _get_chroma_col(f"u{OWNER_USER_ID}_memories")
+        col = _get_chroma_col(f"u{user_id}_memories")
         results = col.get(include=["metadatas"])
         meta_map = {
             results["ids"][i]: meta
@@ -69,20 +109,28 @@ def api_memories():
 
 @app.route("/api/collections")
 def api_collections():
-    """All collection names (excluding the root memories collection)."""
-    cols = sorted(c for c in list_collections(OWNER_USER_ID) if c != "memories")
+    """All collections names for the currently authenticated user."""
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    cols = sorted(c for c in list_collections(user_id) if c != "memories")
     return jsonify(cols)
 
 
 @app.route("/api/graph")
 def api_graph():
-    """Serve the pre-generated pyvis graph HTML."""
-    graph_path = os.path.join(GRAPH_DIR, f"u{OWNER_USER_ID}_graph.html")
+    """Serve the user-specific pre-generated pyvis graph HTML."""
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    graph_path = os.path.join(GRAPH_DIR, f"u{user_id}_graph.html")
 
     if not os.path.exists(graph_path):
         try:
             from core.visualize import generate_graph
-            graph_path = generate_graph(OWNER_USER_ID)
+            graph_path = generate_graph(user_id)
         except Exception:
             pass
 
@@ -93,10 +141,6 @@ def api_graph():
 
 
 if __name__ == "__main__":
-    if not OWNER_USER_ID:
-        print("⚠️  Add OWNER_USER_ID=your_telegram_id to your .env file")
-        raise SystemExit(1)
-
     import socket
     hostname = socket.gethostname()
     try:

@@ -1,110 +1,110 @@
 """
-app.py — ReelsBot web frontend
-Run with: python web/app.py
-Access at: http://localhost:5000
-On your phone: http://[your-laptop-ip]:5000
+analyze.py
+Sends a downloaded Reel + optional user note to Gemini and returns
+a structured memory object. Uses the new google-genai SDK.
 """
 
 import os
-import sys
 import json
-import re
-
-from flask import Flask, render_template, jsonify, send_file
+from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 load_dotenv()
 
-from core.memory import get_recent_memories, list_collections
+client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+MODEL = "gemini-2.5-flash"
 
-app = Flask(__name__)
+SYSTEM_PROMPT = """
+You are analyzing a video that a user has shared with their personal AI memory system.
+You will receive:
+  1. The video itself
+  2. (Optionally) a user note typed alongside the share — treat this as a voice annotation
 
-OWNER_USER_ID = int(os.environ.get("OWNER_USER_ID", 0))
-CHROMA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "chroma")
-GRAPH_DIR  = os.path.join(os.path.dirname(__file__), "..", "data", "graphs")
+Your job is to extract a structured memory from this. Return ONLY valid JSON matching this schema:
 
+{
+  "summary": "2-3 sentence factual summary of what the video is about",
+  "topics": ["list", "of", "topic", "tags"],
+  "user_intent": {
+    "type": "interest | todo | knowledge | person | place | product | none",
+    "description": "What the user wants to remember or do — null if no intent signal"
+  },
+  "preferences_detected": [
+    "any style, aesthetic, or taste preferences the user expressed or the content implies they'd want remembered"
+  ],
+  "todos": [
+    "any tasks, things to try, places to go, things to buy the user mentioned or implied"
+  ],
+  "knowledge": "key factual content in the video worth remembering (how-to steps, facts, tips)",
+  "memory_priority": "high | medium | low",
+  "suggested_collections": ["1 to 3 broad single-word or two-word folder names"]
+}
 
-def _get_chroma_col(name: str):
-    import chromadb
-    from chromadb.utils import embedding_functions
-    client = chromadb.PersistentClient(path=CHROMA_DIR)
-    ef = embedding_functions.SentenceTransformerEmbeddingFunction(
-        model_name="all-MiniLM-L6-v2"
-    )
-    return client.get_collection(name=name, embedding_function=ef)
-
-
-@app.route("/")
-def index():
-    return render_template("index.html")
-
-
-@app.route("/api/memories")
-def api_memories():
-    """All memories with source_url, collections, and priority attached."""
-    memories = get_recent_memories(OWNER_USER_ID, limit=500)
-
-    # Fetch full metadata from ChromaDB to get source_url, collections, priority
-    try:
-        col = _get_chroma_col(f"u{OWNER_USER_ID}_memories")
-        results = col.get(include=["metadatas"])
-        meta_map = {
-            results["ids"][i]: meta
-            for i, meta in enumerate(results["metadatas"])
-        }
-        for m in memories:
-            meta = meta_map.get(m["id"], {})
-            m["source_url"]  = meta.get("source_url", "")
-            m["collections"] = json.loads(meta.get("collections_json", "[]"))
-            m["priority"]    = meta.get("priority", "medium")
-    except Exception:
-        for m in memories:
-            m.setdefault("source_url", "")
-            m.setdefault("collections", [])
-            m.setdefault("priority", "medium")
-
-    return jsonify(memories)
+Rules:
+- If the user said something like "remember I like this" / "keep in mind" / "I gotta do this" → high priority, capture it verbatim in the relevant field
+- If it's just a passive share with no note → infer intent from content, set priority accordingly
+- topics should be specific: not just "food" but "Japanese street food", "ramen preparation"
+- Be concise. The summary will be embedded for semantic search so make it rich with keywords.
+- suggested_collections must be BROAD reusable categories — single words strongly preferred.
+  Good examples: business, cooking, fitness, travel, tech, design, finance, productivity, health, investing
+  Bad examples: "warren buffett investing philosophy", "japanese street food tokyo", "minimalist desk setup ideas"
+  Use at most 2 collections per memory. Pick from existing broad themes rather than inventing new narrow ones.
+"""
 
 
-@app.route("/api/collections")
-def api_collections():
-    """All collection names (excluding the root memories collection)."""
-    cols = sorted(c for c in list_collections(OWNER_USER_ID) if c != "memories")
-    return jsonify(cols)
+def analyze_reel(video_path: str, user_note: str = "") -> dict:
+    """
+    Upload video to Gemini, run structured analysis, return parsed dict.
 
+    Args:
+        video_path: Local path to the downloaded video file
+        user_note: Any text the user typed alongside the link (can be empty)
 
-@app.route("/api/graph")
-def api_graph():
-    """Serve the pre-generated pyvis graph HTML."""
-    graph_path = os.path.join(GRAPH_DIR, f"u{OWNER_USER_ID}_graph.html")
+    Returns:
+        Parsed memory dict
+    """
+    print(f"[analyze] Uploading {video_path} to Gemini...")
 
-    if not os.path.exists(graph_path):
+    with open(video_path, "rb") as f:
+        video_bytes = f.read()
+
+    ext = os.path.splitext(video_path)[1].lower()
+    mime_map = {".mp4": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime"}
+    mime_type = mime_map.get(ext, "video/mp4")
+
+    user_message = SYSTEM_PROMPT
+    if user_note.strip():
+        user_message += f"\n\nUser's annotation when sharing this: \"{user_note.strip()}\""
+    else:
+        user_message += "\n\nNo user annotation — infer intent from content only."
+
+    print("[analyze] Sending to Gemini for analysis...")
+
+    import time
+
+    for attempt in range(3):
         try:
-            from core.visualize import generate_graph
-            graph_path = generate_graph(OWNER_USER_ID)
-        except Exception:
-            pass
+            response = client.models.generate_content(
+                model=MODEL,
+                contents=[
+                    types.Part.from_bytes(data=video_bytes, mime_type=mime_type),
+                    user_message,
+                ],
+            )
+            break
+        except Exception as e:
+            if "429" in str(e) and attempt < 2:
+                wait = 45
+                print(f"[analyze] Rate limited, retrying in {wait}s... (attempt {attempt + 1}/3)")
+                time.sleep(wait)
+            else:
+                raise
 
-    if graph_path and os.path.exists(graph_path):
-        return send_file(graph_path)
+    raw = response.text.strip()
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
 
-    return "No graph yet — save at least 2 Reels first.", 404
-
-
-if __name__ == "__main__":
-    if not OWNER_USER_ID:
-        print("⚠️  Add OWNER_USER_ID=your_telegram_id to your .env file")
-        raise SystemExit(1)
-
-    import socket
-    hostname = socket.gethostname()
-    try:
-        local_ip = socket.gethostbyname(hostname)
-    except Exception:
-        local_ip = "your-laptop-ip"
-
-    print(f"🌐 ReelsBot web UI")
-    print(f"   Local:  http://localhost:5000")
-    print(f"   Phone:  http://{local_ip}:5000")
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    return json.loads(raw.strip())
