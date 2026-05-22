@@ -22,7 +22,7 @@ import re
 import logging
 from datetime import datetime, timezone
 from google import genai
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -484,17 +484,16 @@ async def cmd_login(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     token = generate_login_token(user_id)
-    
-    # We can fetch a base URL from environment or fallback to localhost
-    base_url = os.environ.get("BASE_URL", "http://localhost:5000")
+
+    base_url = os.environ.get("BASE_URL", "http://localhost:5000").rstrip("/")
     login_url = f"{base_url}/login?token={token}"
-    
-    await update.message.reply_html(
-        f"🔑 <b>ReelsBot Web Login</b>\n\n"
-        f"Click the link below to securely log into your memories dashboard. "
-        f"This link is valid for <b>15 minutes</b> and can only be used once:\n\n"
-        f"🔗 <a href=\"{login_url}\">Log In to ReelsBot</a>",
-        disable_web_page_preview=True
+
+    await update.message.reply_text(
+        f"🔑 ReelsBot Web Login\n\n"
+        f"Open this link to access your memories dashboard.\n"
+        f"Valid for 15 minutes, one-time use only:\n\n"
+        f"{login_url}",
+        disable_web_page_preview=True,
     )
 
 
