@@ -141,14 +141,10 @@ def api_graph():
 
 
 if __name__ == "__main__":
-    import socket
-    hostname = socket.gethostname()
-    try:
-        local_ip = socket.gethostbyname(hostname)
-    except Exception:
-        local_ip = "your-laptop-ip"
-
-    print(f"🌐 ReelsBot web UI")
-    print(f"   Local:  http://localhost:5000")
-    print(f"   Phone:  http://{local_ip}:5000")
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    # Railway provides the PORT environment variable. 
+    # Default to 5000 for local development.
+    port = int(os.environ.get("PORT", 5000))
+    
+    # Binding to 0.0.0.0 is required for the app to be reachable 
+    # outside the container.
+    app.run(host="0.0.0.0", port=port)
