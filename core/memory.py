@@ -16,7 +16,7 @@ CHROMA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "chroma")
 
 ef = embedding_functions.SentenceTransformerEmbeddingFunction(
     model_name="all-MiniLM-L6-v2",
-    model_kwargs={"device": "cpu"} # Ensure it doesn't try to look for a GPU
+    device="cpu",  # Chroma expects `device` as a top-level arg.
 )
 
 client = chromadb.PersistentClient(path=CHROMA_DIR)

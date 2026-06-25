@@ -31,12 +31,9 @@ GRAPH_DIR  = os.path.join(os.path.dirname(__file__), "..", "data", "graphs")
 
 def _get_chroma_col(name: str):
     import chromadb
-    from chromadb.utils import embedding_functions
     client = chromadb.PersistentClient(path=CHROMA_DIR)
-    ef = embedding_functions.SentenceTransformerEmbeddingFunction(
-        model_name="all-MiniLM-L6-v2"
-    )
-    return client.get_collection(name=name, embedding_function=ef)
+    # Metadata reads do not require embedding model initialization.
+    return client.get_collection(name=name)
 
 
 @app.route("/")
