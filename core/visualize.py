@@ -29,40 +29,8 @@ def _days_ago(iso_timestamp: str) -> float:
 
 
 def _recency_color(days: float) -> str:
-    """
-    Maps age in days to a hex color.
-    0 days  → #FFD700 (bright gold)
-    7 days  → #FF8C00 (orange)
-    30 days → #CC5500 (burnt orange)
-    90 days → #666666 (grey)
-    180d+   → #333333 (dark grey)
-    """
-    if days < 1:
-        return "#FFD700"
-    elif days < 7:
-        t = (days - 1) / 6
-        r = int(255 - t * (255 - 255))
-        g = int(215 - t * (215 - 140))
-        b = int(0)
-        return f"#{r:02x}{g:02x}{b:02x}"
-    elif days < 30:
-        t = (days - 7) / 23
-        r = int(255 - t * (255 - 204))
-        g = int(140 - t * (140 - 85))
-        b = int(0)
-        return f"#{r:02x}{g:02x}{b:02x}"
-    elif days < 90:
-        t = (days - 30) / 60
-        r = int(204 - t * (204 - 120))
-        g = int(85 - t * (85 - 120))
-        b = int(0 + t * 120)
-        return f"#{r:02x}{g:02x}{b:02x}"
-    elif days < 180:
-        t = (days - 90) / 90
-        v = int(120 - t * (120 - 51))
-        return f"#{v:02x}{v:02x}{v:02x}"
-    else:
-        return "#333333"
+    return "#FFD700"
+
 
 
 def _recency_label(days: float) -> str:
@@ -232,14 +200,25 @@ def _inject_legend(html_path: str):
         font-family: sans-serif; font-size: 11px; color: #888;
         z-index: 9999; pointer-events: none;
       }
+      /* Custom Premium Dark Tooltip style wrapping beautifully */
+      div.vis-tooltip {
+        background-color: #15151f !important;
+        color: #f3f4f6 !important;
+        border: 1px solid rgba(255, 215, 0, 0.4) !important;
+        border-radius: 12px !important;
+        padding: 12px 16px !important;
+        font-family: sans-serif !important;
+        font-size: 13px !important;
+        line-height: 1.5 !important;
+        max-width: 320px !important;
+        white-space: normal !important;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.6) !important;
+        position: absolute !important;
+      }
     </style>
     <div id="reelsbot-legend">
       <h3>🧠 ReelsBot Memory Graph</h3>
-      <div class="legend-row"><div class="legend-dot" style="background:#FFD700"></div> Today</div>
-      <div class="legend-row"><div class="legend-dot" style="background:#FF8C00"></div> This week</div>
-      <div class="legend-row"><div class="legend-dot" style="background:#CC5500"></div> This month</div>
-      <div class="legend-row"><div class="legend-dot" style="background:#888"></div> Older</div>
-      <div class="legend-row"><div class="legend-dot" style="background:#333"></div> Long ago</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#FFD700"></div> Saved Memory</div>
       <br>
       <div style="color:#777; font-size:11px">Node size = connections<br>Edge brightness = similarity</div>
     </div>
@@ -249,7 +228,23 @@ def _inject_legend(html_path: str):
     with open(html_path, "r", encoding="utf-8") as f:
         html = f.read()
 
+    # Inject legend & style before </body>
     html = html.replace("</body>", legend_html + "\n</body>")
+
+    # Inject JS tooltips parsing to DOM elements right before drawing
+    dom_tooltip_js = """
+                  // Parse HTML strings in node titles to DOM elements for proper rendering
+                  nodes.forEach(function(node) {
+                      if (node.title) {
+                          var el = document.createElement('div');
+                          el.innerHTML = node.title;
+                          node.title = el;
+                          nodes.update(node);
+                      }
+                  });
+                  data = {nodes: nodes, edges: edges};
+    """
+    html = html.replace("data = {nodes: nodes, edges: edges};", dom_tooltip_js)
 
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html)

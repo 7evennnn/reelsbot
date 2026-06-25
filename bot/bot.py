@@ -63,6 +63,16 @@ ALLOWED_USERS: set[int] = {
 MAX_DURATION_SECONDS = 600
 URL_PATTERN = re.compile(r"https?://\S+")
 
+def get_local_ip() -> str:
+    import socket
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))  # doesn't send data, just finds outbound interface
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
 
 def is_allowed(user_id: int) -> bool:
     return len(ALLOWED_USERS) == 0 or user_id in ALLOWED_USERS
@@ -478,6 +488,33 @@ async def cmd_delete(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"🗑️ Deleted `{short_id}`.", parse_mode="Markdown")
 
 
+async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if not is_allowed(user_id):
+        return
+
+    help_text = (
+        "🧠 *ReelsBot — Your Personal Video Brain*\n\n"
+        "Here are the commands you can run:\n\n"
+        "🔗 *Save a Reel* — Just paste the Reel/Shorts/TikTok URL (e.g. `https://instagram.com/reel/...`)\n"
+        "💬 *Save with Context* — Paste the URL and add context (e.g. `https://instagram.com/reel/... check out this setup!`)\n\n"
+        "🤖 *AI Actions:*\n"
+        "• `/ask <question>` — Search memories & get synthesized answer\n"
+        "• `/reflect` — Gemini reflects on your saved saves\n"
+        "• `/graph` — Generates interactive memory knowledge graph html\n\n"
+        "🔍 *Browsing & Managing:*\n"
+        "• `/memories [limit]` — List recent saved memories (default 10)\n"
+        "• `/search <query>` — Semantic search across your saves\n"
+        "• `/related <id|topic>` — Find connected memories\n"
+        "• `/todos` — List all extracted todo tasks\n"
+        "• `/collections` — Show automatically generated folders\n"
+        "• `/login` — Get magic link to web dashboard\n"
+        "• `/delete <id>` — Delete a memory by its 8-char ID\n"
+        "• `/help` — Show this message"
+    )
+    await update.message.reply_text(help_text, parse_mode="Markdown")
+
+
 async def cmd_login(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if not is_allowed(user_id):
@@ -485,7 +522,7 @@ async def cmd_login(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     token = generate_login_token(user_id)
 
-    base_url = os.environ.get("BASE_URL", "http://localhost:5000").rstrip("/")
+    base_url = os.environ.get("BASE_URL", f"http://{get_local_ip()}:5000").rstrip("/")
     login_url = f"{base_url}/login?token={token}"
 
     await update.message.reply_text(
@@ -495,6 +532,7 @@ async def cmd_login(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{login_url}",
         disable_web_page_preview=True,
     )
+
 
 
 def main():
@@ -514,6 +552,8 @@ def main():
     app.add_handler(CommandHandler("ask", cmd_ask))
     app.add_handler(CommandHandler("delete", cmd_delete))
     app.add_handler(CommandHandler("login", cmd_login))
+    app.add_handler(CommandHandler("help", cmd_help))
+    app.add_handler(CommandHandler("start", cmd_help))
 
     # Weekly digest scheduler
     if OWNER_USER_ID:
