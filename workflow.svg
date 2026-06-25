@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1003.5911666666666 722.3" width="1003.5911666666666" height="722.3" style="--bg:#1F1F1F;--fg:#CCCCCC;--line:#CCCCCC;--accent:#0078D4;--muted:#CCCCCCCC;--surface:#181818;--border:#CCCCCC;background:var(--bg)">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap');
+  text { font-family: 'Inter', system-ui, sans-serif; }
+  svg {
+    /* Derived from --bg and --fg (overridable via --line, --accent, etc.) */
+    --_text:          var(--fg);
+    --_text-sec:      var(--muted, color-mix(in srgb, var(--fg) 60%, var(--bg)));
+    --_text-muted:    var(--muted, color-mix(in srgb, var(--fg) 40%, var(--bg)));
+    --_text-faint:    color-mix(in srgb, var(--fg) 25%, var(--bg));
+    --_line:          var(--line, color-mix(in srgb, var(--fg) 50%, var(--bg)));
+    --_arrow:         var(--accent, color-mix(in srgb, var(--fg) 85%, var(--bg)));
+    --_node-fill:     var(--surface, color-mix(in srgb, var(--fg) 3%, var(--bg)));
+    --_node-stroke:   var(--border, color-mix(in srgb, var(--fg) 20%, var(--bg)));
+    --_group-fill:    var(--bg);
+    --_group-hdr:     color-mix(in srgb, var(--fg) 5%, var(--bg));
+    --_inner-stroke:  color-mix(in srgb, var(--fg) 12%, var(--bg));
+    --_key-badge:     color-mix(in srgb, var(--fg) 10%, var(--bg));
+  }
+</style>
+<defs>
+  <marker id="arrowhead" markerWidth="8" markerHeight="5" refX="7" refY="2.5" orient="auto">
+    <polygon points="0 0, 8 2.5, 0 5" fill="var(--_arrow)" stroke="var(--_arrow)" stroke-width="0.75" stroke-linejoin="round" />
+  </marker>
+  <marker id="arrowhead-start" markerWidth="8" markerHeight="5" refX="1" refY="2.5" orient="auto-start-reverse">
+    <polygon points="8 0, 0 2.5, 8 5" fill="var(--_arrow)" stroke="var(--_arrow)" stroke-width="0.75" stroke-linejoin="round" />
+  </marker>
+</defs>
+<polyline class="edge" data-from="A" data-to="B" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="399.90816666666655,161.8 399.90816666666655,185.8 581.2306666666665,185.8 581.2306666666665,209.8" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="B" data-to="C" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="549.6624999999999,246.70000000000002 549.6624999999999,439.6 244.74299999999994,439.6 244.74299999999994,451.6" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="C" data-to="D" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="244.74299999999994,488.5 244.74299999999994,536.5" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="D" data-to="E" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="244.74299999999994,573.4 244.74299999999994,603.4 362.2406666666666,603.4 362.2406666666666,633.4" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="D" data-to="F" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="244.74299999999994,573.4 244.74299999999994,603.4 779.7196666666666,603.4 779.7196666666666,633.4" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="G" data-to="H" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="762.5531666666666,76.9 762.5531666666666,124.9" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="H" data-to="B" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="762.5531666666666,161.8 762.5531666666666,185.8 581.2306666666665,185.8 581.2306666666665,209.8" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="I" data-to="E" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Retrieves memories &amp; graph" points="714.9068333333331,529.1 714.9068333333331,541.1 547.9859999999999,541.1 547.9859999999999,609.4 433.08183333333324,609.4 433.08183333333324,633.4" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="I" data-to="F" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Fetches HTML Pyvis Graph" points="786.6881666666665,529.1 786.6881666666665,565.1 838.7048333333332,565.1 838.7048333333332,633.4" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="B" data-to="J" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="/login command" points="612.7988333333332,246.70000000000002 612.7988333333332,258.70000000000005 750.7974999999999,258.70000000000005 750.7974999999998,339" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="J" data-to="I" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="User logs in" points="750.7974999999998,375.9 750.7974999999998,492.20000000000005" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<g class="edge-label" data-from="I" data-to="E" data-label="Retrieves memories &amp; graph">
+  <rect x="473.4859999999999" y="548.1" width="148.92400000000004" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="547.9479999999999" y="563.25" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Retrieves memories &amp; graph</text>
+</g>
+<g class="edge-label" data-from="I" data-to="F" data-label="Fetches HTML Pyvis Graph">
+  <rect x="763.7048333333332" y="572.1" width="149.518" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="838.4638333333332" y="587.25" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Fetches HTML Pyvis Graph</text>
+</g>
+<g class="edge-label" data-from="B" data-to="J" data-label="/login command">
+  <rect x="706.2974999999999" y="265.70000000000005" width="88.93" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="750.7624999999999" y="280.85" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">/login command</text>
+</g>
+<g class="edge-label" data-from="J" data-to="I" data-label="User logs in">
+  <rect x="713.7974999999999" y="418.9000000000001" width="73.486" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="750.5405" y="434.05000000000007" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">User logs in</text>
+</g>
+<g class="node" data-id="A" data-label="User shares Reel URL to Telegram Bot" data-shape="rectangle">
+  <rect x="266.3011666666666" y="124.9" width="267.21399999999994" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="399.90816666666655" y="143.35000000000002" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">User shares Reel URL to Telegram Bot</text>
+</g>
+<g class="node" data-id="B" data-label="Telegram Bot core/bot.py" data-shape="rectangle">
+  <rect x="486.52616666666654" y="209.8" width="189.40899999999996" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="581.2306666666665" y="228.25" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Telegram Bot core/bot.py</text>
+</g>
+<g class="node" data-id="C" data-label="core/ingest.py: download video via yt-dlp" data-shape="rectangle">
+  <rect x="105.94899999999996" y="451.6" width="277.58799999999997" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="244.74299999999994" y="470.05" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">core/ingest.py: download video via yt-dlp</text>
+</g>
+<g class="node" data-id="D" data-label="core/analyze.py: Gemini 2.5 Flash video/audio/context analysis" data-shape="rectangle">
+  <rect x="40" y="536.5" width="409.4859999999999" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="244.74299999999994" y="554.95" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">core/analyze.py: Gemini 2.5 Flash video/audio/context analysis</text>
+</g>
+<g class="node" data-id="E" data-label="core/memory.py: ChromaDB stores vector embeddings &amp; metadata" data-shape="rectangle">
+  <rect x="149.71716666666663" y="633.4" width="425.0469999999999" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="362.2406666666666" y="651.85" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">core/memory.py: ChromaDB stores vector embeddings &amp; metadata</text>
+</g>
+<g class="node" data-id="F" data-label="core/graph.py: NetworkX links memories semantically" data-shape="rectangle">
+  <rect x="602.7641666666666" y="633.4" width="353.91099999999994" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="779.7196666666666" y="651.85" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">core/graph.py: NetworkX links memories semantically</text>
+</g>
+<g class="node" data-id="G" data-label="User runs /ask or /reflect" data-shape="rectangle">
+  <rect x="668.2191666666665" y="40" width="188.66799999999995" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="762.5531666666665" y="58.45" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">User runs /ask or /reflect</text>
+</g>
+<g class="node" data-id="H" data-label="Gemini 2.5 Flash-Lite/Pro synthesizes context from ChromaDB" data-shape="rectangle">
+  <rect x="561.5151666666666" y="124.9" width="402.076" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="762.5531666666666" y="143.35000000000002" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Gemini 2.5 Flash-Lite/Pro synthesizes context from ChromaDB</text>
+</g>
+<g class="node" data-id="I" data-label="Web Dashboard Flask app.py" data-shape="rectangle">
+  <rect x="643.1254999999999" y="492.20000000000005" width="215.344" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="750.7974999999999" y="510.65000000000003" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Web Dashboard Flask app.py</text>
+</g>
+<g class="node" data-id="J" data-label="core/auth.py: generates secure magic link" data-shape="rectangle">
+  <rect x="607.1869999999999" y="339" width="287.22099999999995" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="750.7974999999999" y="357.45" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">core/auth.py: generates secure magic link</text>
+</g>
+</svg>
