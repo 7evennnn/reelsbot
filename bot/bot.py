@@ -22,13 +22,14 @@ import re
 import logging
 from datetime import datetime, timezone
 from google import genai
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
     MessageHandler,
     ContextTypes,
     filters,
+    PreCheckoutQueryHandler,
 )
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
@@ -53,6 +54,13 @@ gemini_client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 REFLECT_MODEL = "gemini-2.5-flash-lite"
 OWNER_USER_ID   = int(os.environ.get("OWNER_USER_ID", 0))
 DIGEST_TIMEZONE = os.environ.get("DIGEST_TIMEZONE", "Asia/Kuala_Lumpur")
+MODE = os.environ.get("MODE", "standalone")
+PAYMENT_PROVIDER_TOKEN = os.environ.get("PAYMENT_PROVIDER_TOKEN", "")
+
+try:
+    from core.db import has_quota, increment_processed, add_credits, get_or_create_user, has_ask_quota, increment_asks
+except ImportError:
+    pass
 # ── Guardrails ────────────────────────────────────────────────────────────────
 # Message @userinfobot on Telegram to get your ID.
 # Empty = open to anyone. Add your ID to lock it down.
@@ -126,6 +134,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    if MODE == "saas":
+        if not has_quota(user_id):
+            await update.message.reply_text(
+                "⚠️ **Quota Exceeded.**\n\n"
+                "You have used up your free/paid Reels.\n"
+                "Please use `/upgrade` to purchase an additional 50 Reels.",
+                parse_mode="Markdown"
+            )
+            return
+
     status_msg = await update.message.reply_text("⏳ Checking video...")
 
     try:
@@ -158,6 +176,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cleanup_video(video_path)
     memory_id = save_memory(analysis, url, user_id, user_note)
     add_and_link(memory_id, user_id)
+    if MODE == "saas":
+        increment_processed(user_id)
 
     intent = analysis.get("user_intent", {})
     todos = analysis.get("todos", [])
@@ -413,6 +433,16 @@ async def cmd_ask(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_allowed(user_id):
         return
 
+    if MODE == "saas":
+        if not has_ask_quota(user_id):
+            await update.message.reply_text(
+                "⚠️ **Ask Quota Exceeded.**\n\n"
+                "You have used up your free/paid Ask requests.\n"
+                "Please use `/upgrade` to purchase more credits.",
+                parse_mode="Markdown"
+            )
+            return
+
     question = " ".join(context.args).strip()
     if not question:
         await update.message.reply_text(
@@ -458,6 +488,8 @@ Answer based strictly on what's in their memories. Be specific — reference par
             f"💬 *{question}*\n\n{response.text}",
             parse_mode="Markdown"
         )
+        if MODE == "saas":
+            increment_asks(user_id)
     except Exception as e:
         await update.message.reply_text(f"❌ Ask failed: {e}")
 
@@ -535,12 +567,93 @@ async def cmd_login(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+async def _post_init(application):
+    """Ensure polling mode and log which bot account we connected as."""
+    await application.bot.delete_webhook(drop_pending_updates=True)
+    me = await application.bot.get_me()
+    logger.info("Telegram bot ready — polling as @%s (id=%s)", me.username, me.id)
+
+
+async def _on_error(update: object, context: ContextTypes.DEFAULT_TYPE):
+    logger.exception("Unhandled bot error", exc_info=context.error)
+    if isinstance(update, Update) and update.effective_message:
+        await update.effective_message.reply_text(
+            f"Something went wrong: {context.error}"
+        )
+
+
+async def cmd_upgrade(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if MODE != "saas":
+        await update.message.reply_text("SaaS mode is not enabled. Enjoy unlimited use!")
+        return
+
+    user_id = update.effective_user.id
+    user = get_or_create_user(user_id)
+    
+    await update.message.reply_text(
+        f"📊 **Usage Stats**\n"
+        f"Processed Reels: {user['processed_reels']} / {user['total_allowed_reels']} Reels\n"
+        f"Used Ask Credits: {user['processed_asks']} / {user['total_allowed_asks']} Asks\n\n"
+        "Click the button below to add 50 more Reels and 10 Ask credits to your account for $3.00.",
+        parse_mode="Markdown"
+    )
+
+    chat_id = update.message.chat_id
+    title = "ReelsBot 50-Reel Top-up"
+    description = "Unlock 50 more high-intelligence video analyses."
+    payload = "reelsbot_topup_50"
+    currency = "USD"
+    price = 300 # $3.00
+
+    if PAYMENT_PROVIDER_TOKEN:
+        prices = [LabeledPrice("Top-up Pack", price)]
+        await context.bot.send_invoice(
+            chat_id, title, description, payload, PAYMENT_PROVIDER_TOKEN, currency, prices
+        )
+    else:
+        # Telegram Stars pricing format (currency XTR)
+        # Note: 1 Star is approx 0.02 USD. 3 USD = 150 Stars
+        prices = [LabeledPrice("Top-up Pack", 150)]
+        await context.bot.send_invoice(
+            chat_id, title, description, payload, "", "XTR", prices
+        )
+
+
+async def precheckout_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.pre_checkout_query
+    if query.invoice_payload != "reelsbot_topup_50":
+        await query.answer(ok=False, error_message="Something went wrong...")
+    else:
+        await query.answer(ok=True)
+
+
+async def successful_payment_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    amount = update.message.successful_payment.total_amount / 100.0
+    
+    # Add 50 reels and 10 asks
+    add_credits(user_id, 50, amount, amount_asks=10, tier_name='premium')
+    
+    await update.message.reply_text(
+        "✅ **Payment Received!**\n\n"
+        "Thank you! 50 Reels and 10 Ask credits have been added to your account.\n"
+        "You can continue sending videos and asking questions.",
+        parse_mode="Markdown"
+    )
+
+
 def main():
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     if not token:
         raise RuntimeError("Set TELEGRAM_BOT_TOKEN environment variable")
 
-    app = ApplicationBuilder().token(token).build()
+    app = (
+        ApplicationBuilder()
+        .token(token)
+        .post_init(_post_init)
+        .build()
+    )
+    app.add_error_handler(_on_error)
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(CommandHandler("reflect", cmd_reflect))
     app.add_handler(CommandHandler("graph", cmd_graph))
@@ -554,6 +667,9 @@ def main():
     app.add_handler(CommandHandler("login", cmd_login))
     app.add_handler(CommandHandler("help", cmd_help))
     app.add_handler(CommandHandler("start", cmd_help))
+    app.add_handler(CommandHandler("upgrade", cmd_upgrade))
+    app.add_handler(PreCheckoutQueryHandler(precheckout_callback))
+    app.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment_callback))
 
     # Weekly digest scheduler
     if OWNER_USER_ID:
@@ -572,8 +688,11 @@ def main():
     else:
         print("⚠️  OWNER_USER_ID not set — weekly digest disabled")
 
-    print("🤖 ReelsBot is running...")
-    app.run_polling()
+    logger.info("ReelsBot starting polling loop...")
+    app.run_polling(
+        allowed_updates=Update.ALL_TYPES,
+        drop_pending_updates=True,
+    )
 
 
 if __name__ == "__main__":

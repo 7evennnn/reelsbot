@@ -1,39 +1,42 @@
 # 🧠 ReelsBot — Your Personal Video Memory Brain
 
-> **Product Statement:** We help content consumers turn saved short-form videos (Reels, TikToks, Shorts) into a structured personal knowledge engine. ReelsBot automatically transcribes, indexes, and semantically links your saves via a Telegram bot and interactive web dashboard so you never lose the value of what you scroll.
+> **Don't want to self-host or set up API keys?** [Try the official hosted ReelsBot on Telegram!](https://t.me/your_hosted_bot_username) (First 50 reels free, top-up packs available).
+
+### TL;DR
+ReelsBot turns the black box of saved short-form videos (Reels, TikToks, Shorts) into a searchable, interactive personal knowledge graph. Send any video link to the Telegram bot, and it transcribes, vectorizes, and maps it using Gemini and local embeddings so you can query or reflect on your video library instantly.
 
 ---
 
-## 📖 Layman's vs. Judge's Pitch
+## 📖 Product Concept
 
-### 🧑‍💻 Layman's Explanation (What it does)
-We all save educational videos, recipe hacks, and tech tutorials on Instagram, TikTok, or YouTube Shorts, but they disappear into a black box we never open again. ReelsBot is a Telegram bot that watches these videos for you, summarizes them, extracts a list of things to do (todos), and places them on an interactive knowledge map that you can search or ask questions to.
+### 🧑‍💻 What it does
+We all save educational videos, recipes, tutorials, or ideas on Instagram, TikTok, or YouTube Shorts, but they disappear into a saved folder we never look at again. A black hole, if you will.
+ReelsBot watches these videos for you, summarizes them, extracts todos, and puts them on an interactive concept map. You can search your library, ask questions of your memories (e.g., "/ask what were those desk setups I saved?"), or get automated weekly reflections.
 
-### ⚖️ Judge's Pitch (How it works & technical leverage)
-ReelsBot leverages Gemini's multimodal audio-visual understanding to parse, transcribe, and structure raw short-form video content shared via social media. The data is processed through a dual pipeline:
-1. **ChromaDB Vector Store** for dense semantic search and RAG-based (Retrieval-Augmented Generation) Q&A.
-2. **NetworkX Topological Graph** using sentence-transformers to calculate cosine similarity between memories, mapping them into an interactive HTML visualization.
-
-This goes beyond a simple LLM wrapper: it builds a stateful, namespaced memory graph that updates incrementally as the user interacts with the bot, turning passive scrolling into an structured, queryable knowledge engine.
+### How it works
+ReelsBot processes short-form video payloads through a multimodal pipeline:
+1. **Multimodal Analysis:** Gemini API (2.5 Flash) ingests raw video assets via `yt-dlp` to extract structural summaries, user intent, suggested collections, and priority queues.
+2. **Dense Vector Indexing:** ChromaDB stores namespaced document embeddings locally via `sentence-transformers` for semantic querying and contextual RAG.
+3. **Topological Similarity Mapping:** A NetworkX graph calculates cosine similarity matrices between saved items, outputting interactive graph maps rendered using PyVis.
 
 ---
 
 ## 🛠️ Built With
 
-*   **Languages:** Python (Core logic & backend)
-*   **APIs:** Google Gemini API (Gemini 2.5 Flash for multimodal video analysis, Gemini 2.5 Flash-Lite for semantic Q&A, Gemini 2.5 Pro for timeline reflections)
-*   **Databases:** ChromaDB (Vector database for local semantic indexing)
-*   **Embeddings:** SentenceTransformers (`all-MiniLM-L6-v2` for generating dense vector representations locally)
-*   **Graph Engine:** NetworkX (Topological structure) & Pyvis (Interactive HTML network visualization)
-*   **Web Framework:** Flask (Dashboard and serving the knowledge map)
-*   **Interfaces:** Telegram Bot API (via `python-telegram-bot`)
-*   **Media Processing:** `yt-dlp` (For video ingestion and downloading)
-*   **Deployment:** Railway (Cloud hosting)
+*   **Languages:** Python
+*   **APIs:** Google GenAI SDK (Gemini 2.5 Flash & Flash-Lite)
+*   **Vector Engine:** ChromaDB (Local namespaced indexes)
+*   **Similarity Embeddings:** SentenceTransformers (`all-MiniLM-L6-v2` locally)
+*   **Graph Engine:** NetworkX & Pyvis (Interactive HTML network visualizations)
+*   **Web Ingress & Dashboard:** Flask
+*   **Interfaces:** Telegram Bot API
+*   **Worker dependencies:** `yt-dlp` and `ffmpeg`
 
 ---
 
 ## ⚙️ Setup
 
+### Installation
 ```bash
 pip install -r requirements.txt
 ```
@@ -44,17 +47,44 @@ Create a `.env` file in the root directory:
 GEMINI_API_KEY=your-key-from-aistudio.google.com
 TELEGRAM_BOT_TOKEN=your-token-from-@BotFather
 OWNER_USER_ID=your-telegram-id-from-@userinfobot
-BASE_URL=https://your-railway-url.up.railway.app
+BASE_URL=http://localhost:5000
 ```
 
 ### Run Locally
 ```bash
+# Navigate to the folder
+cd reelsbot 
+
 # Start Telegram bot
 python bot/bot.py
 
 # Start Web dashboard
 python web/app.py
 ```
+
+### Deploy on Railway
+
+Use **two services** from the same repo. Each service runs one process (start command: `bash start.sh`).
+
+| Service | `APP_ROLE` | What it does |
+|---|---|---|
+| **web** | `web` | Flask dashboard (default if `APP_ROLE` is unset) |
+| **bot** | `bot` | Telegram bot — **required for bot replies** |
+
+Shared variables on both services: `GEMINI_API_KEY`, `TELEGRAM_BOT_TOKEN`, `OWNER_USER_ID`, `BASE_URL`, `HF_HOME=/app/data/hf_cache`, `FLASK_SECRET_KEY`.
+
+Mount a persistent volume at `/app/data` on **both** services so ChromaDB and the HF model cache survive restarts.
+
+**Verify the bot service logs contain:**
+```
+[start.sh] APP_ROLE=bot
+Telegram bot ready — polling as @YourBotName
+ReelsBot starting polling loop...
+```
+
+If you only see Flask/Werkzeug logs, the bot is not running — add a second service with `APP_ROLE=bot`.
+
+**Common gotcha:** Do not run the bot locally and on Railway at the same time with the same token; only one process can poll Telegram updates.
 
 ---
 
