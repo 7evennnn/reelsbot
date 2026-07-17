@@ -1,6 +1,6 @@
 # 🧠 ReelsBot — Your Personal Video Memory Brain
 
-> **Don't want to self-host or set up API keys?** [Try the official hosted ReelsBot on Telegram!](https://t.me/your_hosted_bot_username) (First 50 reels free, top-up packs available).
+> **Don't want to self-host or set up API keys?** [Try the official hosted ReelsBot on Telegram!](https://t.me/Reeeeeelssssbot) (First 50 reels free, top-up packs available).
 
 ### TL;DR
 ReelsBot turns the black box of saved short-form videos (Reels, TikToks, Shorts) into a searchable, interactive personal knowledge graph. Send any video link to the Telegram bot, and it transcribes, vectorizes, and maps it using Gemini and local embeddings so you can query or reflect on your video library instantly.
